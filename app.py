@@ -3,25 +3,21 @@ import pandas as pd
 from datetime import datetime
 
 # 1. ตั้งค่าหน้าจอ
-st.set_page_config(page_title="Material Calculator Pro", layout="centered")
+st.set_page_config(page_title="Multi-Material Calc", layout="wide")
 
+# ตกแต่ง UI
 st.markdown("""
     <style>
-    .stNumberInput input { font-size: 20px !important; }
-    .material-card {
-        background-color: #ffffff; padding: 15px; border-radius: 10px;
-        border-left: 5px solid #28a745; margin-bottom: 10px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-    }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #28a745; color: white; }
+    .report-table { font-size: 14px; }
+    .total-box { background-color: #e9ecef; padding: 15px; border-radius: 10px; margin-top: 10px; }
     </style>
-    """, unsafe_allow_html=True)
-
-st.title("🏗️ โปรแกรมคำนวณวัสดุ")
+""", unsafe_allow_html=True)
 
 # 2. ฟังก์ชันโหลดข้อมูล
 @st.cache_data
 def load_data():
-    file_name = "เทสตาราง.csv" # ตรวจสอบให้แน่ใจว่าบน GitHub ชื่อไฟล์นี้
+    file_name = "เทสตาราง.csv"
     for enc in ['cp874', 'tis-620', 'utf-8-sig']:
         try:
             df = pd.read_csv(file_name, skiprows=2, header=None, encoding=enc, on_bad_lines='skip')
@@ -30,74 +26,93 @@ def load_data():
             continue
     return None
 
+# 3. เตรียมระบบหน่วยความจำ (Session State)
+if 'calc_history' not in st.session_state:
+    st.session_state.calc_history = []
+
+st.title("🏗️ ระบบคำนวณวัสดุรวมหลายรายการ")
+
 try:
     df = load_data()
     if df is not None:
-        # --- ส่วนข้อมูลโครงการ ---
-        col1, col2 = st.columns(2)
-        with col1:
-            project_name = st.text_input("🏢 ชื่อโครงการ:", value="โครงการก่อสร้างทั่วไป")
-        with col2:
-            calc_date = datetime.now().strftime("%d/%m/%Y")
-            st.text_input("📅 วันที่คำนวณ:", value=calc_date, disabled=True)
+        # ส่วนข้อมูลโครงการ
+        with st.expander("📝 ข้อมูลโครงการ", expanded=True):
+            col_p1, col_p2 = st.columns(2)
+            project_name = col_p1.text_input("ชื่อโครงการ:", value="โครงการใหม่")
+            calc_date = col_p2.text_input("วันที่:", value=datetime.now().strftime("%d/%m/%Y"), disabled=True)
 
+        # ส่วนการเลือกงาน
+        st.subheader("➕ เพิ่มรายการงาน")
+        col_input1, col_input2, col_input3 = st.columns([2, 1, 1])
+        
         work_list = df[0].dropna().unique().tolist()
-        selected_work = st.selectbox("📌 เลือกประเภทงาน:", work_list)
-        quantity = st.number_input("🔢 ระบุปริมาณงาน (หน่วย):", min_value=0.0, value=1.0, step=0.5)
-
-        if quantity > 0:
-            st.divider()
-            st.subheader(f"📊 รายการสำหรับ {quantity} หน่วย")
-            
+        selected_work = col_input1.selectbox("ประเภทงาน:", work_list)
+        quantity = col_input2.number_input("ปริมาณงาน:", min_value=0.1, value=1.0, step=0.1)
+        
+        if col_input3.button("➕ เพิ่มเข้าโครงการ"):
             selected_row = df[df[0] == selected_work].iloc[0]
             materials = {
-                "หินใหญ่ (ลบ.ม.)": 2, "หินย่อย (ลบ.ม.)": 4, "ทรายหยาบ (ลบ.ม.)": 6,
-                "ปูนซีเมนต์ (ถุง)": 8, "หินคลุก (ลบ.ม.)": 10
+                "หินใหญ่": 2, "หินย่อย": 4, "ทรายหยาบ": 6, "ปูนซีเมนต์": 8, "หินคลุก": 10
             }
-
-            # เตรียมข้อมูลสำหรับ Export
-            export_list = []
             
-            for name, idx in materials.items():
+            # คำนวณวัสดุทุกตัวในแถวนั้น
+            for mat_name, idx in materials.items():
                 try:
                     rate = float(selected_row[idx])
                     if rate > 0:
-                        total = quantity * rate
-                        st.markdown(f"""
-                            <div class="material-card">
-                                <div style="color: gray; font-size: 14px;">{name}</div>
-                                <div style="font-size: 24px; font-weight: bold; color: #28a745;">{total:,.2f}</div>
-                                <div style="font-size: 12px;">อัตรา: {rate}</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        # เก็บข้อมูลเข้า List สำหรับทำไฟล์สรุป
-                        export_list.append({
-                            "โครงการ": project_name,
-                            "วันที่": calc_date,
+                        total_mat = quantity * rate
+                        # บันทึกลงหน่วยความจำ
+                        st.session_state.calc_history.append({
                             "ประเภทงาน": selected_work,
                             "ปริมาณงาน": quantity,
-                            "รายการวัสดุ": name,
-                            "อัตราส่วน": rate,
-                            "รวมวัสดุที่ใช้": total
+                            "รายการวัสดุ": mat_name,
+                            "อัตรา": rate,
+                            "จำนวนที่ใช้": total_mat
                         })
                 except:
                     continue
+            st.success(f"เพิ่ม {selected_work} เรียบร้อย!")
 
-            # --- ส่วนปุ่ม Export ---
-            if export_list:
-                st.divider()
-                export_df = pd.DataFrame(export_list)
-                csv = export_df.to_csv(index=False).encode('utf-8-sig')
-                
-                st.download_button(
-                    label="📥 ดาวน์โหลดไฟล์สรุปโครงการ (Excel/CSV)",
-                    data=csv,
-                    file_name=f'สรุปวัสดุ_{project_name}_{calc_date}.csv',
-                    mime='text/csv',
-                    use_container_width=True
-                )
+        # 4. แสดงผลรายการทั้งหมดที่เพิ่มไปแล้ว
+        if st.session_state.calc_history:
+            st.divider()
+            st.subheader("📊 ตารางสรุปภาพรวมโครงการ")
+            
+            summary_df = pd.DataFrame(st.session_state.calc_history)
+            
+            # แสดงตารางแบบสรุปผลรวมวัสดุแยกตามประเภท
+            pivot_df = summary_df.groupby("รายการวัสดุ")["จำนวนที่ใช้"].sum().reset_index()
+            
+            st.write("**รวมวัสดุทั้งหมดที่ต้องสั่ง:**")
+            cols = st.columns(len(pivot_df))
+            for i, row in pivot_df.iterrows():
+                cols[i].metric(label=row['รายการวัสดุ'], value=f"{row['จำนวนที่ใช้']:,.2f}")
+
+            with st.expander("🔍 ดูรายละเอียดแยกตามรายการงาน"):
+                st.table(summary_df)
+
+            # ปุ่มล้างข้อมูล
+            if st.button("🗑️ ล้างข้อมูลทั้งหมด"):
+                st.session_state.calc_history = []
+                st.rerun()
+
+            # 5. ปุ่ม Export
+            st.subheader("📤 ส่งออกข้อมูล")
+            # เพิ่มข้อมูลโครงการลงในไฟล์ด้วย
+            export_df = summary_df.copy()
+            export_df['ชื่อโครงการ'] = project_name
+            export_df['วันที่'] = calc_date
+            
+            csv = export_df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 ดาวน์โหลดไฟล์สรุปโครงการ (.csv)",
+                data=csv,
+                file_name=f'สรุปวัสดุ_{project_name}.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
     else:
-        st.error("❌ ไม่พบไฟล์ข้อมูล")
+        st.error("❌ ไม่พบไฟล์ข้อมูล เทสตาราง.csv")
 
 except Exception as e:
-    st.error(f"⚠️ ข้อผิดพลาด: {e}")
+    st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
