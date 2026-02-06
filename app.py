@@ -72,6 +72,35 @@ try:
                                     <div style="font-size: 12px; color: #666;">ใช้อัตรา: {rate}</div>
                                 </div>
                             """, unsafe_allow_html=True)
+                            # --- ส่วนที่เพิ่มใหม่สำหรับ Export ---
+        st.divider()
+        st.subheader("📤 ส่งออกข้อมูลภาพรวม")
+
+        # สร้างรายการข้อมูลสำหรับตารางสรุป
+        summary_data = []
+        for name, idx in materials.items():
+            try:
+                rate = float(selected_row[idx])
+                if rate > 0:
+                    total = quantity * rate
+                    summary_data.append({"รายการวัสดุ": name, "อัตราส่วน": rate, "ปริมาณรวม": total})
+            except:
+                continue
+        
+        # แปลงเป็น DataFrame เพื่อทำเป็นตาราง
+        summary_df = pd.DataFrame(summary_data)
+
+        # ปุ่มดาวน์โหลดไฟล์ Excel
+        # เราจะใช้คำสั่ง to_csv เพราะใช้ง่ายและเปิดใน Excel ได้เลย
+        csv = summary_df.to_csv(index=False).encode('utf-8-sig')
+        
+        st.download_button(
+            label="📥 ดาวน์โหลดไฟล์สรุป (CSV/Excel)",
+            data=csv,
+            file_name=f'สรุปวัสดุ_{selected_work}.csv',
+            mime='text/csv',
+            use_container_width=True # ทำให้ปุ่มเต็มหน้าจอ กดง่ายบนมือถือ
+        )
                 except:
                     continue
     else:
