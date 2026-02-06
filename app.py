@@ -45,7 +45,7 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
-    file_name = "data.csv"
+    file_name = "เทสตาราง.csv"
     for enc in ['cp874', 'tis-620', 'utf-8-sig']:
         try:
             df = pd.read_csv(file_name, skiprows=2, header=None, encoding=enc, on_bad_lines='skip')
@@ -135,7 +135,7 @@ try:
                     "แผนงาน": p_val,
                     "รวมคำนวณจริง": a_val,
                     "ส่วนต่าง": diff,
-                    "สถานะ": "✅ OK" if diff >= 0 else "⚠️ Over"
+                    "สถานะ": "ปริมาณน้อยกว่าหรือเท่ากับแผน" if diff >= 0 else "ปริมาณมากกว่าแผน"
                 })
             st.table(pd.DataFrame(comp_rows))
 
@@ -179,6 +179,6 @@ try:
                 st.rerun()
 
     else:
-        st.error("❌ ไม่พบไฟล์ data.csv")
+        st.error("❌ ไม่พบไฟล์ เทสตาราง.csv")
 except Exception as e:
     st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
