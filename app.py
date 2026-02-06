@@ -72,7 +72,7 @@ try:
                                     <div style="font-size: 12px; color: #666;">ใช้อัตรา: {rate}</div>
                                 </div>
                             """, unsafe_allow_html=True)
-                  except:
+                except:
                     continue
     else:
         # แสดงข้อความเตือนหากหาไฟล์ไม่เจอ
@@ -81,4 +81,3 @@ try:
 
 except Exception as e:
     st.error(f"⚠️ ตรวจพบข้อผิดพลาด: {e}")
-
