@@ -1,0 +1,52 @@
+import streamlit as st
+import pandas as pd
+
+# ตั้งค่าหน้าเว็บให้พอดีมือถือ
+st.set_page_config(page_title="Material Calc", layout="centered")
+
+# ปรับสีธีมให้ดูเหมือนแอปมือถือ (ส้ม-ดำ สไตล์วิศวกรรม)
+st.markdown("""
+    <style>
+    .stNumberInput input { font-size: 24px !important; height: 60px !important; }
+    .stSelectbox div[data-baseweb="select"] { font-size: 18px !important; }
+    .result-card {
+        background-color: white; padding: 20px; border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 8px solid #FF4B4B;
+        margin-bottom: 15px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🏗️ คำนวณวัสดุก่อสร้าง")
+
+# โหลดฐานข้อมูล (ชื่อไฟล์ต้องตรงกับที่คุณอัปโหลด)
+try:
+    df = pd.read_csv("เทสตาราง.xlsx - data ห้ามลบ ห้ามทำชีทนี้.csv")
+    
+    # เมนูเลือกงาน
+    work_list = df.iloc[:, 0].unique()
+    selected_work = st.selectbox("เลือกประเภทงาน:", work_list)
+
+    # ช่องกรอกปริมาณ (เน้นให้ใหญ่ กดง่ายบนมือถือ)
+    quantity = st.number_input("กรอกปริมาณงาน (หน่วย):", min_value=0.0, step=1.0, value=0.0)
+
+    if quantity > 0:
+        st.subheader("📋 ผลลัพธ์วัสดุที่ต้องใช้")
+        
+        # ดึงอัตราส่วน
+        row = df[df.iloc[:, 0] == selected_work].iloc[0]
+        
+        # แสดงผล
+        for col in df.columns[1:]:
+            rate = row[col]
+            if pd.notna(rate) and rate != 0:
+                total = quantity * float(rate)
+                st.markdown(f"""
+                    <div class="result-card">
+                        <div style="color: gray; font-size: 14px;">{col}</div>
+                        <div style="font-size: 26px; font-weight: bold; color: #FF4B4B;">{total:,.2f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+except Exception as e:
+    st.error("กรุณาตรวจสอบไฟล์ฐานข้อมูล CSV")
