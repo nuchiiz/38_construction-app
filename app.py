@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # 1. ตั้งค่าหน้าจอ
-st.set_page_config(page_title="คำนวณอัตราปริมาณงานของงานคอนกรีตและหินต่าง ๆ", layout="wide")
+st.set_page_config(page_title="ระบบคำนวณวัสดุ Pro", layout="wide")
 
 # ปรับปรุงฟอนต์และกรอบให้ชัดเจน (CSS)
 st.markdown("""
