@@ -5,34 +5,41 @@ from datetime import datetime
 # 1. ตั้งค่าหน้าจอ
 st.set_page_config(page_title="ระบบควบคุมวัสดุ Pro", layout="wide")
 
-# ปรับปรุง CSS สำหรับการเปรียบเทียบ
+# ปรับปรุง CSS ให้ตัวหนังสือเด่นและสีพื้นหลังชัดเจน
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Sarabun', sans-serif; }
 
-    .stMetric {
-        padding: 15px !important;
-        border-radius: 15px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-        border: 1px solid #ddd !important;
+    /* ปรับแต่ง Metric ให้ตัวหนังสือหนาและเด่น */
+    [data-testid="stMetricValue"] {
+        font-size: 36px !important;
+        font-weight: 800 !important;
+        color: #000000 !important; /* ตัวเลขสีดำเข้ม */
     }
-    
-    /* สีพื้นหลังแยกตามประเภท */
-    div[data-testid="stMetric"]:nth-child(1) { background-color: #f0f2f6; } 
-    div[data-testid="stMetric"]:nth-child(2) { background-color: #e8eaed; } 
-    div[data-testid="stMetric"]:nth-child(3) { background-color: #fff4e6; } 
-    div[data-testid="stMetric"]:nth-child(4) { background-color: #ebfbee; } 
-    div[data-testid="stMetric"]:nth-child(5) { background-color: #e7f5ff; }
+    [data-testid="stMetricLabel"] {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #1a1a1a !important;
+    }
 
-    .compare-box {
-        padding: 20px;
-        border-radius: 10px;
-        border: 2px solid #333;
-        margin-top: 10px;
+    /* สีพื้นหลัง Metric แบบ High Contrast */
+    div[data-testid="stMetric"]:nth-child(1) { background-color: #D1D5DB; border: 2px solid #9CA3AF; } /* หินใหญ่ - เทาเข้ม */
+    div[data-testid="stMetric"]:nth-child(2) { background-color: #9CA3AF; border: 2px solid #4B5563; } /* หินย่อย - เทา */
+    div[data-testid="stMetric"]:nth-child(3) { background-color: #FDE68A; border: 2px solid #F59E0B; } /* ทราย - เหลืองเข้ม */
+    div[data-testid="stMetric"]:nth-child(4) { background-color: #A7F3D0; border: 2px solid #10B981; } /* ปูน - เขียวเด่น */
+    div[data-testid="stMetric"]:nth-child(5) { background-color: #BFDBFE; border: 2px solid #3B82F6; } /* หินคลุก - ฟ้า */
+
+    /* ปรับช่อง Input ให้ตัวหนังสือใหญ่ */
+    input { font-size: 20px !important; font-weight: bold !important; }
+    
+    /* กรอบรายการงาน */
+    .stExpander {
+        border: 2px solid #1a1a1a !important;
+        background-color: #ffffff !important;
+        border-radius: 10px !important;
+        box-shadow: 3px 3px 0px #000000;
     }
-    .status-ok { color: #28a745; font-weight: bold; }
-    .status-over { color: #dc3545; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -49,41 +56,33 @@ def load_data():
 if 'calc_history' not in st.session_state:
     st.session_state.calc_history = []
 
-st.title("🏗️ ระบบคำนวณและเปรียบเทียบวัสดุ")
+st.title("🏗️ ระบบจัดการและเปรียบเทียบวัสดุ (Full Report)")
 
 try:
     df = load_data()
     if df is not None:
-        # ส่วนข้อมูลโครงการและแผนงาน
-        with st.container():
-            col_p1, col_p2, col_p3 = st.columns([2, 1, 1])
-            project_name = col_p1.text_input("🏢 ชื่อโครงการ:", value="โครงการใหม่")
-            calc_date = datetime.now().strftime("%d/%m/%Y")
-            col_p2.text_input("📅 วันที่:", value=calc_date, disabled=True)
+        # ส่วนหัวโครงการ
+        col_p1, col_p2 = st.columns([3, 1])
+        project_name = col_p1.text_input("🏢 ชื่อโครงการ / ไซต์งาน:", value="โครงการใหม่")
+        calc_date = datetime.now().strftime("%d/%m/%Y")
+        col_p2.text_input("📅 วันที่:", value=calc_date, disabled=True)
             
-        # --- ใหม่: ช่องกรอกปริมาณตามแผนเพื่อเปรียบเทียบ ---
-        with st.expander("📊 ตั้งค่าปริมาณตามแผน (Planned Quantity)", expanded=False):
-            st.info("กรอกปริมาณวัสดุที่ประเมินไว้เบื้องต้นเพื่อใช้เปรียบเทียบ")
-            col_plan1, col_plan2, col_plan3, col_plan4, col_plan5 = st.columns(5)
-            plan_h1 = col_plan1.number_input("แผน: หินใหญ่", min_value=0.0, step=1.0)
-            plan_h2 = col_plan2.number_input("แผน: หินย่อย", min_value=0.0, step=1.0)
-            plan_t = col_plan3.number_input("แผน: ทรายหยาบ", min_value=0.0, step=1.0)
-            plan_p = col_plan4.number_input("แผน: ปูนซีเมนต์", min_value=0.0, step=1.0)
-            plan_hc = col_plan5.number_input("แผน: หินคลุก", min_value=0.0, step=1.0)
-            
-            planned_values = {
-                "หินใหญ่": plan_h1, "หินย่อย": plan_h2, 
-                "ทรายหยาบ": plan_t, "ปูนซีเมนต์": plan_p, "หินคลุก": plan_hc
-            }
+        # การตั้งค่าแผน
+        with st.expander("📊 1. ตั้งค่าปริมาณตามแผน (Planned)", expanded=False):
+            col_plan = st.columns(5)
+            p_names = ["หินใหญ่", "หินย่อย", "ทรายหยาบ", "ปูนซีเมนต์", "หินคลุก"]
+            planned_values = {}
+            for i, name in enumerate(p_names):
+                planned_values[name] = col_plan[i].number_input(f"แผน: {name}", min_value=0.0, key=f"p_{i}")
 
         st.divider()
 
-        # การเพิ่มรายการ
-        st.subheader("➕ เพิ่มรายการงาน")
+        # เพิ่มรายการงาน
+        st.subheader("➕ 2. เพิ่มรายการงานที่ทำจริง")
         col_in1, col_in2, col_in3 = st.columns([2, 1, 1])
         work_list = df[0].dropna().unique().tolist()
-        selected_work = col_in1.selectbox("เลือกงาน:", work_list)
-        quantity = col_in2.number_input("ปริมาณงานที่ทำจริง:", min_value=0.1, value=1.0, step=0.1)
+        selected_work = col_in1.selectbox("เลือกประเภทงาน:", work_list)
+        quantity = col_in2.number_input("ปริมาณงานจริง:", min_value=0.1, value=1.0)
         
         if col_in3.button("➕ เพิ่มเข้าโครงการ"):
             selected_row = df[df[0] == selected_work].iloc[0]
@@ -93,66 +92,93 @@ try:
                 try:
                     if idx < len(selected_row):
                         rate_val = float(selected_row[idx])
-                        if rate_val > 0:
-                            temp_details[m_name] = rate_val * quantity
+                        if rate_val > 0: temp_details[m_name] = rate_val * quantity
                 except: continue
             st.session_state.calc_history.append({"ประเภทงาน": selected_work, "ปริมาณงาน": quantity, "รายละเอียด": temp_details})
             st.rerun()
 
-        # แสดงรายการที่บันทึก
+        # แสดงรายการ
         if st.session_state.calc_history:
-            st.subheader("📋 รายการบันทึก")
+            st.subheader("📋 3. รายการบันทึกสะสม")
             for i, item in enumerate(st.session_state.calc_history):
-                with st.expander(f"📌 {item['ประเภทงาน']} ({item['ปริมาณงาน']} หน่วย)"):
+                with st.expander(f"🔹 {item['ประเภทงาน']} | {item['ปริมาณงาน']} หน่วย", expanded=False):
                     for m_n, m_v in item['รายละเอียด'].items():
                         st.write(f"- {m_n}: **{m_v:,.2f}**")
                     if st.button(f"🗑️ ลบรายการนี้", key=f"del_{i}"):
                         st.session_state.calc_history.pop(i)
                         st.rerun()
 
-            # --- สรุปและเปรียบเทียบ ---
+            # ส่วนสรุปและเปรียบเทียบ
             st.divider()
-            st.subheader("📊 ตารางเปรียบเทียบ แผน vs คำนวณจริง")
+            st.subheader("📊 4. สรุปผลและเปรียบเทียบแผน")
             
-            totals = {}
+            totals = {k: 0.0 for k in p_names}
             for item in st.session_state.calc_history:
                 for m_n, m_v in item['รายละเอียด'].items():
-                    # ทำความสะอาดชื่อเพื่อเทียบกับ planned_values
-                    clean_name = m_n.split(" ")[0] 
-                    totals[clean_name] = totals.get(clean_name, 0) + m_v
+                    # Matching name
+                    for p_n in p_names:
+                        if p_n in m_n: totals[p_n] += m_v
 
-            # สร้างตารางเปรียบเทียบ
-            comparison_rows = []
-            for mat_name, total_val in totals.items():
-                plan_val = planned_values.get(mat_name, 0)
-                diff = plan_val - total_val
-                status = "✅ ภายในแผน" if diff >= 0 else "⚠️ เกินแผนงาน"
-                comparison_rows.append({
-                    "รายการวัสดุ": mat_name,
-                    "ปริมาณตามแผน": f"{plan_val:,.2f}",
-                    "คำนวณจริง": f"{total_val:,.2f}",
-                    "ส่วนต่าง (คงเหลือ)": f"{diff:,.2f}",
-                    "สถานะ": status
+            # แสดง Metric สีเด่นชัด
+            m_cols = st.columns(len(p_names))
+            for i, name in enumerate(p_names):
+                m_cols[i].metric(label=name, value=f"{totals[name]:,.2f}")
+
+            # ตารางเปรียบเทียบในแอป
+            comp_rows = []
+            for name in p_names:
+                p_val = planned_values[name]
+                a_val = totals[name]
+                diff = p_val - a_val
+                comp_rows.append({
+                    "รายการวัสดุ": name,
+                    "แผนงาน": p_val,
+                    "รวมคำนวณจริง": a_val,
+                    "ส่วนต่าง": diff,
+                    "สถานะ": "✅ OK" if diff >= 0 else "⚠️ Over"
                 })
+            st.table(pd.DataFrame(comp_rows))
+
+            # --- ส่วน EXPORT ข้อมูลแบบละเอียดรวมภาพรวม ---
+            st.subheader("📤 5. ส่งออกข้อมูล")
             
-            if comparison_rows:
-                st.table(pd.DataFrame(comparison_rows))
-
-            # แสดง Metric ยอดรวม
-            m_cols = st.columns(len(totals))
-            for idx, (m_name, m_val) in enumerate(totals.items()):
-                m_cols[idx].metric(label=m_name, value=f"{m_val:,.2f}")
-
-            # ส่งออก
-            st.divider()
+            # 1. ส่วนรายละเอียด (Detailed)
+            export_detailed = []
+            for item in st.session_state.calc_history:
+                row = {"ประเภทงาน": item['ประเภทงาน'], "ปริมาณงานจริง": item['ปริมาณงาน']}
+                # ใส่ค่าวัสดุแต่ละตัว
+                for name in p_names:
+                    val = 0.0
+                    for m_n, m_v in item['รายละเอียด'].items():
+                        if name in m_n: val = m_v
+                    row[name] = val
+                export_detailed.append(row)
+            
+            df_detailed = pd.DataFrame(export_detailed)
+            
+            # 2. ส่วนสรุปเปรียบเทียบ (Comparison)
+            df_comp = pd.DataFrame(comp_rows)
+            
+            # รวมไฟล์ CSV (คั่นด้วยบรรทัดว่าง)
+            output_text = f"รายงานวัสดุโครงการ: {project_name}\nวันที่คำนวณ: {calc_date}\n\n"
+            output_text += "--- รายละเอียดรายรายการ ---\n"
+            output_text += df_detailed.to_csv(index=False)
+            output_text += "\n--- สรุปยอดรวมและเปรียบเทียบแผน ---\n"
+            output_text += df_comp.to_csv(index=False)
+            
             col_ex1, col_ex2 = st.columns(2)
-            if st.session_state.calc_history:
-                csv_data = pd.DataFrame(comparison_rows).to_csv(index=False).encode('utf-8-sig')
-                col_ex1.download_button("📥 ดาวน์โหลดรายงานเปรียบเทียบ", csv_data, f"Comparison_{project_name}.csv", "text/csv")
-            if col_ex2.button("🚫 ล้างข้อมูลโครงการ"):
+            col_ex1.download_button(
+                label="📥 ดาวน์โหลดรายงานฉบับสมบูรณ์",
+                data=output_text.encode('utf-8-sig'),
+                file_name=f'Report_{project_name}_{calc_date}.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
+            if col_ex2.button("🚫 ล้างข้อมูลโครงการทั้งหมด"):
                 st.session_state.calc_history = []
                 st.rerun()
+
     else:
         st.error("❌ ไม่พบไฟล์ data.csv")
 except Exception as e:
-    st.error(f"⚠️ ข้อผิดพลาด: {e}")
+    st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
