@@ -135,7 +135,7 @@ try:
                     "แผนงาน": p_val,
                     "รวมคำนวณจริง": a_val,
                     "ส่วนต่าง": diff,
-                    "สถานะ": "✅ OK" if diff >= 0 else "⚠️ Over"
+                    "สถานะ": "✅ ปริมาณเท่ากับหรือน้อยกว่าแผน" if diff >= 0 else "⚠️ ปริมาณมากกว่าแผน"
                 })
             st.table(pd.DataFrame(comp_rows))
 
