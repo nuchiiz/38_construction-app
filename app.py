@@ -3,13 +3,40 @@ import pandas as pd
 from datetime import datetime
 
 # 1. ตั้งค่าหน้าจอ
-st.set_page_config(page_title="ระบบคำนวณวัสดุ", layout="wide")
+st.set_page_config(page_title="ระบบคำนวณวัสดุ Pro", layout="wide")
 
-# ตกแต่ง UI
+# ปรับปรุงฟอนต์และกรอบให้ชัดเจน (CSS)
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; }
-    .stMetric { background-color: #f0f2f6; padding: 10px; border-radius: 10px; border: 1px solid #d1d1d1; }
+    /* ปรับขนาดฟอนต์หัวข้อหลัก */
+    h1, h2, h3 { color: #1E1E1E; font-family: 'Sarabun', sans-serif; }
+    
+    /* กรอบรายการงานที่บันทึกไว้ */
+    .stExpander {
+        border: 2px solid #28a745 !important;
+        border-radius: 10px !important;
+        background-color: #F8FFF9 !important;
+        margin-bottom: 10px !important;
+    }
+    
+    /* ปรับขนาดตัวเลขใน Metric (ยอดรวม) */
+    [data-testid="stMetricValue"] {
+        font-size: 28px !important;
+        font-weight: bold !important;
+        color: #28a745 !important;
+    }
+    
+    /* ตารางสรุปผล */
+    .stTable {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+    }
+    
+    /* ช่องกรอกข้อมูล */
+    .stNumberInput input {
+        font-size: 20px !important;
+        font-weight: bold !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -25,48 +52,45 @@ def load_data():
             continue
     return None
 
-# 3. เตรียมหน่วยความจำ
 if 'calc_history' not in st.session_state:
     st.session_state.calc_history = []
 
-st.title("🏗️ ระบบจัดการวัสดุ (หลายรายการ)")
+st.title("🏗️ ระบบจัดการวัสดุ (ฉบับปรับปรุงใหม่)")
 
 try:
     df = load_data()
     if df is not None:
         # ส่วนข้อมูลโครงการ
-        col_p1, col_p2 = st.columns(2)
-        project_name = col_p1.text_input("🏢 ชื่อโครงการ:", value="โครงการใหม่")
-        calc_date = datetime.now().strftime("%d/%m/%Y")
-        col_p2.text_input("📅 วันที่:", value=calc_date, disabled=True)
+        with st.container():
+            col_p1, col_p2 = st.columns(2)
+            project_name = col_p1.text_input("🏢 ชื่อโครงการ (กรอกเพื่อตั้งชื่อไฟล์):", value="โครงการใหม่")
+            calc_date = datetime.now().strftime("%d/%m/%Y")
+            col_p2.text_input("📅 วันที่คำนวณ:", value=calc_date, disabled=True)
 
         st.divider()
 
         # ส่วนการเพิ่มรายการ
-        st.subheader("➕ เพิ่มรายการงาน")
+        st.subheader("➕ เพิ่มรายการงานใหม่")
         col_in1, col_in2, col_in3 = st.columns([2, 1, 1])
         
         work_list = df[0].dropna().unique().tolist()
         selected_work = col_in1.selectbox("เลือกประเภทงาน:", work_list)
-        quantity = col_in2.number_input("ปริมาณงาน:", min_value=0.1, value=1.0, step=0.1)
+        quantity = col_in2.number_input("ปริมาณงาน (หน่วย):", min_value=0.1, value=1.0, step=0.1)
         
         if col_in3.button("➕ เพิ่มเข้าโครงการ"):
             selected_row = df[df[0] == selected_work].iloc[0]
-            # แผนผังคอลัมน์อัตรา (2=หินใหญ่, 4=หินย่อย, 6=ทราย, 8=ปูน, 10=หินคลุก)
             m_map = {"หินใหญ่": 2, "หินย่อย": 4, "ทรายหยาบ": 6, "ปูนซีเมนต์": 8, "หินคลุก": 10}
             
             temp_details = {}
             for m_name, idx in m_map.items():
                 try:
-                    # ตรวจสอบว่าคอลัมน์มีอยู่จริงและเป็นตัวเลข
                     if idx < len(selected_row):
                         rate_val = float(selected_row[idx])
                         if rate_val > 0:
                             temp_details[m_name] = rate_val * quantity
-                except (ValueError, TypeError):
+                except:
                     continue
             
-            # บันทึกข้อมูล
             st.session_state.calc_history.append({
                 "ประเภทงาน": selected_work,
                 "ปริมาณงาน": quantity,
@@ -74,24 +98,26 @@ try:
             })
             st.rerun()
 
-        # 4. รายการที่บันทึกและการลบ
+        # 4. แสดงรายการที่เพิ่มไปแล้ว (ใช้กรอบชัดเจน)
         if st.session_state.calc_history:
             st.divider()
-            st.subheader("📝 รายการที่เลือกไว้")
+            st.subheader("📋 รายการที่บันทึกไว้ (ตรวจสอบ/ลบ)")
             
-            # สร้างสำเนาเพื่อวนลูปตอนลบ
             for i, item in enumerate(st.session_state.calc_history):
-                with st.expander(f"รายการที่ {i+1}: {item['ประเภทงาน']} ({item['ปริมาณงาน']} หน่วย)"):
-                    for m_n, m_v in item['รายละเอียด'].items():
-                        st.write(f"- {m_n}: **{m_v:,.2f}**")
+                # ปรับแต่งกรอบ Expander ด้วย CSS ด้านบนแล้ว
+                with st.expander(f"📌 {item['ประเภทงาน']} | จำนวน {item['ปริมาณงาน']} หน่วย", expanded=True):
+                    cols_m = st.columns(len(item['รายละเอียด']))
+                    for idx, (m_n, m_v) in enumerate(item['รายละเอียด'].items()):
+                        cols_m[idx].write(f"**{m_n}**")
+                        cols_m[idx].write(f"{m_v:,.2f}")
                     
                     if st.button(f"🗑️ ลบรายการนี้", key=f"del_{i}"):
                         st.session_state.calc_history.pop(i)
                         st.rerun()
 
-            # 5. สรุปยอดรวม (ตรวจสอบยอดรวม)
+            # 5. สรุปยอดรวม (ตัวเลขใหญ่ชัดเจน)
             st.divider()
-            st.subheader("📊 ยอดรวมวัสดุทั้งหมดที่ต้องใช้")
+            st.subheader("📊 ยอดรวมวัสดุสุทธิ (สำหรับสั่งของ)")
             
             totals = {}
             for item in st.session_state.calc_history:
@@ -99,17 +125,20 @@ try:
                     totals[m_n] = totals.get(m_n, 0) + m_v
             
             if totals:
-                # แสดง Metric สวยๆ
+                # แสดงผลยอดรวมแบบ Card
                 m_cols = st.columns(len(totals))
                 for idx, (m_name, m_val) in enumerate(totals.items()):
-                    m_cols[idx].metric(m_name, f"{m_val:,.2f}")
+                    with m_cols[idx]:
+                        st.metric(label=m_name, value=f"{m_val:,.2f}")
                 
-                # แสดงตารางสรุป
-                st.table(pd.DataFrame(list(totals.items()), columns=['วัสดุ', 'จำนวนรวมสุทธิ']))
+                # ตารางสรุปแบบทางการ
+                st.table(pd.DataFrame(list(totals.items()), columns=['รายการวัสดุ', 'จำนวนรวมที่ต้องใช้']))
 
-            # 6. ส่งออกข้อมูล
+            # 6. ส่งออกและล้างข้อมูล
+            st.divider()
             col_ex1, col_ex2 = st.columns(2)
             
+            # เตรียมไฟล์ CSV
             export_list = []
             for item in st.session_state.calc_history:
                 for m_n, m_v in item['รายละเอียด'].items():
@@ -124,7 +153,7 @@ try:
             
             if export_list:
                 csv_data = pd.DataFrame(export_list).to_csv(index=False).encode('utf-8-sig')
-                col_ex1.download_button("📥 ดาวน์โหลดไฟล์สรุป", csv_data, f"Summary_{project_name}.csv", "text/csv")
+                col_ex1.download_button("📥 ดาวน์โหลดไฟล์สรุป (Excel/CSV)", csv_data, f"Summary_{project_name}.csv", "text/csv")
             
             if col_ex2.button("🚫 ล้างข้อมูลทั้งหมด"):
                 st.session_state.calc_history = []
